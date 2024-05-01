@@ -1,32 +1,469 @@
-# Prerequisites
-*.d
+#include <iostream> 
+#include <windows.h> 
+#include <conio.h> 
+#include <vector> 
+#include <math.h> 
 
-# Compiled Object files
-*.slo
-*.lo
-*.o
-*.obj
+using namespace std;
 
-# Precompiled Headers
-*.gch
-*.pch
+void gotoxy(int x, int y)
+{
+	COORD p = { x, y };
+	SetConsoleCursorPosition(GetStdHandle(STD_OUTPUT_HANDLE), p);
+}
 
-# Compiled Dynamic libraries
-*.so
-*.dylib
-*.dll
+const float PI = 3.1415;
 
-# Fortran module files
-*.mod
-*.smod
+const int WIDTH = 10 + 2;
+const int HEIGHT = 15 + 1;
+const int SLEEP_ANIM_DEL_LINES = 50;
 
-# Compiled Static libraries
-*.lai
-*.la
-*.a
-*.lib
 
-# Executables
-*.exe
-*.out
-*.app
+const int EMPTY = 0;
+const int BORDER = 1;
+const int BLOCK = 2;
+
+const int BLOCKS_IN_LINE = 10;
+
+struct Point {
+	int x;
+	int y;
+};
+
+class Figure {
+
+	vector <Point> vec;
+
+public:
+
+
+	int getX(int i) {
+		return vec[i].x;
+	}
+
+	int getY(int i) {
+		return vec[i].y;
+	}
+
+	int getVecSize() {
+		return vec.size();
+	}
+
+	void push(int x, int y) {
+		Point temp;
+		temp.x = x;
+		temp.y = y;
+		vec.push_back(temp);
+	}
+
+	void show() {
+		for (int i = 0; i < vec.size(); i++) {
+			gotoxy(vec[i].x, vec[i].y);
+			cout << '*';
+		}
+	}
+
+	void hide() {
+		for (int i = 0; i < vec.size(); i++) {
+			gotoxy(vec[i].x, vec[i].y);
+			cout << ' ';
+		}
+	}
+
+	void moveDown() {
+		for (int i = 0; i < vec.size(); i++) {
+			vec[i].y++;
+		}
+	}
+
+	void moveUp() {
+		for (int i = 0; i < vec.size(); i++) {
+			vec[i].y--;
+		}
+	}
+
+	void moveLeft() {
+		for (int i = 0; i < vec.size(); i++) {
+			vec[i].x--;
+		}
+	}
+
+	void moveRight() {
+		for (int i = 0; i < vec.size(); i++) {
+			vec[i].x++;
+		}
+	}
+
+	void spawn() {
+		vec.clear();
+		int r = rand() % 3;
+		switch (r) {
+		case 0:
+			this->push(4, 0);
+			this->push(5, 0);
+			this->push(4, 1);
+			this->push(5, 1);
+			break;
+		case 1:
+			this->push(4, 0);
+			this->push(5, 0);
+			this->push(6, 0);
+			this->push(7, 0);
+			break;
+		case 2:
+			this->push(4, 0);
+			this->push(5, 0);
+			this->push(6, 0);
+			this->push(6, 1);
+			break;
+		}
+	}
+
+	void rotateR() {
+		for (int i = 0; i < vec.size(); i++) {
+			int x = -(vec[i].y - vec[1].y) + vec[1].x;
+			int y = (vec[i].x - vec[1].x) + vec[1].y;
+			vec[i].x = x;
+			vec[i].y = y;
+		}
+	}
+
+	void rotateL() {
+		for (int i = 0; i < vec.size(); i++) {
+			int x = (vec[i].y - vec[1].y) + vec[1].x;
+			int y = -(vec[i].x - vec[1].x) + vec[1].y;
+			vec[i].x = x;
+			vec[i].y = y;
+		}
+	}
+};
+
+class Map {
+
+	vector <vector <int>> vec;
+	int _width;
+	int _height;
+
+public:
+
+	void init(int width, int height) {
+
+		_width = width;
+		_height = height;
+
+		vector<int> temp;
+		temp.push_back(BORDER);
+		for (int i = 1; i < width - 1; i++)
+			temp.push_back(EMPTY);
+		temp.push_back(BORDER);
+
+		for (int i = 0; i < height - 1; i++)
+			vec.push_back(temp);
+
+		temp.clear();
+		for (int i = 0; i < width; i++)
+			temp.push_back(BORDER);
+
+		vec.push_back(temp);
+	}
+
+	void show() {
+		// для откладки
+		for (int i = 0; i < vec.size(); i++) {
+			gotoxy(19, i);
+			cout << i << " ";
+			if (i < 10)
+				cout << " ";
+			for (int j = 0; j < vec[i].size(); j++) {
+				cout << vec[i][j];
+			}
+			cout << endl;
+		}
+
+		gotoxy(0, 0);
+		for (int i = 0; i < vec.size(); i++) {
+			for (int j = 0; j < vec[i].size(); j++) {
+				if (vec[i][j] == BORDER)
+					cout << '#';
+				if (vec[i][j] == BLOCK)
+					cout << '*';
+				else if (vec[i][j] == EMPTY)
+					cout << ' ';
+			}
+			cout << endl;
+		}
+	}
+
+	void animDeleteLines(const vector <int>& lines) {
+
+		if (lines.empty())
+			return;
+
+		for (int i = 1; i <= this->_width - 2; i++) {
+			for (int j = 0; j < lines.size(); j++) {
+				gotoxy(i, lines[j]);
+				cout << " ";
+			}
+			Sleep(SLEEP_ANIM_DEL_LINES);
+		}
+	}
+
+	void deleteLines(int width) {
+
+		vector <int> lines;
+
+		// определение рядов которые нужно удалить
+		for (int i = vec.size() - 2; i >= 0; i--) {
+			int d = 0;
+			for (int j = 1; j < vec[i].size() - 1; j++) {
+				if (vec[i][j] == BLOCK) {
+					d++;
+				}
+				else {
+					break;
+				}
+			}
+			if (d == BLOCKS_IN_LINE) {
+				lines.push_back(i);
+			}
+		}
+
+
+
+		// удаление рядов из вектора
+		for (int i = 0; i < lines.size(); i++) {
+			vec.erase(vec.begin() + lines[i]);
+		}
+
+		// добавление пустых рядов сверху в стакан взамен удаленных
+		vector<int> temp;
+		temp.push_back(BORDER);
+		for (int i = 1; i < width - 1; i++)
+			temp.push_back(EMPTY);
+		temp.push_back(BORDER);
+		for (int i = 0; i < lines.size(); i++)
+			vec.insert(vec.begin(), temp);
+
+		animDeleteLines(lines);
+	}
+
+	//bool isCollision(Figure &fig) {
+	//	for (int i = 0; i < fig.getVecSize(); i++) {
+	//		if (vec[fig.getY(i)][fig.getX(i)] == BORDER) // столкновение с границей
+	//			return true;
+	//		if (vec[fig.getY(i)][fig.getX(i)] == BLOCK) // столкновение с уже установленной фигурой
+	//			return true;
+	//	}
+	//	return false;
+	//}
+
+	bool isCollision(Figure& fig) {
+		for (int i = 0; i < fig.getVecSize(); i++) {
+
+			if (fig.getY(i) < 0) // столкновение с верхней границей
+				return true;
+
+			if (vec[fig.getY(i)][fig.getX(i)] == BORDER) // столкновение с границей
+				return true;
+
+			if (vec[fig.getY(i)][fig.getX(i)] == BLOCK) // столкновение с уже установленной фигурой
+				return true;
+		}
+		return false;
+	}
+
+	void fixed(Figure& fig) {
+		for (int i = 0; i < fig.getVecSize(); i++) {
+			vec[fig.getY(i)][fig.getX(i)] = BLOCK;
+		}
+	}
+
+};
+
+class Game {
+
+public:
+	Game() {}
+
+	int run() {
+
+		Map map;
+		map.init(WIDTH, HEIGHT);
+		map.show();
+
+		//initVec(vec, WIDTH, HEIGHT);
+		//showField(vec);
+
+		Figure fig;
+		fig.spawn();
+
+		int ch = 0;
+		int i = 0;
+
+		int x = 5, y = 5;
+
+		while (true) {
+			while (!_kbhit()) {
+				fig.hide();
+				fig.moveDown();
+
+				if (map.isCollision(fig)) {
+
+					fig.moveUp();
+					map.fixed(fig);
+
+					fig.show(); // !!! нужно фигуру прорисовать перед удалением линий, иначе она сразу стирается с экрана
+					map.deleteLines(WIDTH);
+					map.show();
+
+					fig.spawn();
+				}
+				fig.show();
+				Sleep(300);
+			}
+
+			ch = _getch();
+
+			if (ch == 224) {
+				ch = _getch();
+				gotoxy(20, 20);
+				cout << ch;
+			}
+
+			// обработка нажатых клавиш
+			switch (ch) {
+			case 77: // вправо
+				fig.hide();
+				fig.moveRight();
+
+				if (map.isCollision(fig)) {
+					fig.moveLeft();
+				}
+				break;
+			case 80: // вниз
+				y++;
+				break;
+			case 75: // влево
+				fig.hide();
+				fig.moveLeft();
+
+				if (map.isCollision(fig)) {
+					fig.moveRight();
+				}
+				break;
+			case 72: // вверх поворот по часовой
+				fig.hide();
+				fig.rotateR();
+				if (map.isCollision(fig)) {
+					fig.rotateL();
+				}
+
+				break;
+			case 32: // поворот против часовой
+				fig.hide();
+				fig.rotateL();
+				break;
+			}
+		}
+		return 0;
+	}
+
+	int run2() {
+
+		Map map;
+		map.init(WIDTH, HEIGHT);
+		map.show();
+
+		//initVec(vec, WIDTH, HEIGHT);
+		//showField(vec);
+
+		Figure fig;
+		fig.spawn();
+
+		int ch = 0;
+		int i = 0;
+
+		int x = 5, y = 5;
+
+		while (true) {
+			//while (!_kbhit()) 
+			{
+				fig.hide();
+				//fig.moveDown();
+
+				if (map.isCollision(fig)) {
+
+					fig.moveUp();
+					map.fixed(fig);
+
+					map.deleteLines(WIDTH);
+					map.show();
+
+					fig.spawn();
+				}
+				fig.show();
+				//Sleep(300);
+			}
+
+			ch = _getch();
+
+			if (ch == 224) {
+				ch = _getch();
+				gotoxy(20, 20);
+				cout << ch;
+			}
+
+			// обработка нажатых клавиш
+			switch (ch) {
+			case 77: // вправо
+				fig.hide();
+				fig.moveRight();
+
+				if (map.isCollision(fig)) {
+					fig.moveLeft();
+				}
+				break;
+			case 80: // вниз
+				fig.hide();
+				fig.moveDown();
+
+				if (map.isCollision(fig)) {
+					fig.moveUp();
+				}
+				break;
+			case 75: // влево
+				fig.hide();
+				fig.moveLeft();
+
+				if (map.isCollision(fig)) {
+					fig.moveRight();
+				}
+				break;
+			case 72: // вверх поворот по часовой
+				fig.hide();
+				fig.rotateR();
+				if (map.isCollision(fig)) {
+					fig.rotateL();
+				}
+
+				break;
+			case 32: // поворот против часовой
+				fig.hide();
+				fig.rotateL();
+				if (map.isCollision(fig)) {
+					fig.rotateR();
+				}
+				break;
+			}
+		}
+		return 0;
+	}
+
+};
+
+int main()
+{
+	Game game;
+	game.run();
+	_getch();
+}
